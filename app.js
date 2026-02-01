@@ -1,27 +1,28 @@
 const express = require("express");
-const app = express();
+const fetch = (...args) =>
+  import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
+const app = express();
 const port = process.env.PORT || 3001;
 
-/* ========= MIDDLEWARE ========= */
 app.use(express.json());
 
-/* ========= ROTA RAIZ (HEALTHCHECK) ========= */
+/* =========================
+   ROTA RAIZ (TESTE)
+========================= */
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-/* ========= CHAT COMPLETIONS (OPENAI COMPATÍVEL) ========= */
+/* =========================
+   CHAT COMPLETIONS (OPENAI COMPAT)
+========================= */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
-    const userMessage =
-      req.body?.messages?.map(m => m.content).join("\n") || "";
+    const messages = req.body.messages || [];
+    const userMessage = messages.map(m => m.content).join("\n");
 
-    if (!userMessage) {
-      return res.status(400).json({ error: "Mensagem vazia" });
-    }
-
-    const response = await fetch(
+    const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
@@ -36,7 +37,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       }
     );
 
-    const data = await response.json();
+    const data = await geminiResponse.json();
 
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
@@ -64,7 +65,9 @@ app.post("/v1/chat/completions", async (req, res) => {
   }
 });
 
-/* ========= START SERVER ========= */
+/* =========================
+   START SERVER
+========================= */
 const server = app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
