@@ -3,10 +3,9 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 3001;
 
-/* ========= MIDDLEWARE ========= */
 app.use(express.json());
 
-/* ========= CHAT COMPLETIONS ========= */
+/* ================= CHAT COMPLETIONS ================= */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
     const messages = req.body.messages || [];
@@ -28,7 +27,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
 
-    return res.json({
+    res.json({
       id: "chatcmpl-gemini-proxy",
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
@@ -44,18 +43,22 @@ app.post("/v1/chat/completions", async (req, res) => {
         }
       ]
     });
-  } catch (e) {
-    return res.status(500).json({ error: "erro interno" });
+  } catch {
+    res.status(500).json({ error: "erro interno" });
   }
 });
 
-/* ========= FALLBACK ABSOLUTO ========= */
-/* QUALQUER ROTA RESPONDE */
-app.all("*", (req, res) => {
+/* ================= ROOT ================= */
+app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-/* ========= START ========= */
+/* ================= FALLBACK CORRETO ================= */
+app.use((req, res) => {
+  res.status(200).send("OK");
+});
+
+/* ================= START ================= */
 app.listen(port, () => {
   console.log("Server running on port", port);
 });
