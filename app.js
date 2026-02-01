@@ -1,4 +1,5 @@
 const express = require("express");
+
 const fetch = (...args) =>
   import("node-fetch").then(({ default: fetch }) => fetch(...args));
 
@@ -16,7 +17,7 @@ app.post("/v1/chat/completions", async (req, res) => {
     const messages = req.body.messages || [];
     const userMessage = messages.map(m => m.content).join("\n");
 
-    const geminiResponse = await fetch(
+    const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
@@ -29,7 +30,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       }
     );
 
-    const data = await geminiResponse.json();
+    const data = await response.json();
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
@@ -55,8 +56,8 @@ app.post("/v1/chat/completions", async (req, res) => {
   }
 });
 
-/* FALLBACK GLOBAL */
-app.all("*", (req, res) => {
+/* FALLBACK */
+app.use((req, res) => {
   res.status(200).send("OK");
 });
 
