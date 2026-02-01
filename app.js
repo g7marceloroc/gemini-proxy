@@ -1,5 +1,4 @@
-import express from "express";
-import fetch from "node-fetch";
+const express = require("express");
 
 const app = express();
 const port = process.env.PORT || 3001;
@@ -7,47 +6,43 @@ const port = process.env.PORT || 3001;
 /* ===== MIDDLEWARE ===== */
 app.use(express.json());
 
-/* ===== ROOT (OBRIGATÓRIO) ===== */
+/* ===== ROOT ===== */
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-/* ===== HEALTH CHECK ===== */
+/* ===== HEALTH ===== */
 app.get("/health", (req, res) => {
   res.json({ status: "alive" });
 });
 
-/* ===== OPENAI-COMPATÍVEL ===== */
+/* ===== OPENAI COMPAT ===== */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
-    const messages = req.body?.messages;
+    const messages = req.body.messages;
     if (!Array.isArray(messages)) {
       return res.status(400).json({ error: "messages inválido" });
     }
 
     const prompt = messages.map(m => m.content).join("\n");
 
-    const geminiResponse = await fetch(
+    const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            {
-              parts: [{ text: prompt }]
-            }
-          ]
+          contents: [{ parts: [{ text: prompt }] }]
         })
       }
     );
 
-    const data = await geminiResponse.json();
+    const data = await response.json();
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
 
-    return res.json({
+    res.json({
       id: "chatcmpl-gemini-proxy",
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
@@ -55,20 +50,17 @@ app.post("/v1/chat/completions", async (req, res) => {
       choices: [
         {
           index: 0,
-          message: {
-            role: "assistant",
-            content: text
-          },
+          message: { role: "assistant", content: text },
           finish_reason: "stop"
         }
       ]
     });
   } catch (err) {
-    return res.status(500).json({ error: "Erro interno" });
+    res.status(500).json({ error: "Erro interno" });
   }
 });
 
 /* ===== START ===== */
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log("Server running on port", port);
 });
