@@ -1,34 +1,48 @@
-const express = require("express");
-
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) => fetch(...args));
+import express from "express";
+import fetch from "node-fetch";
 
 const app = express();
+const port = process.env.PORT || 3001;
+
+/* ===== MIDDLEWARE ===== */
 app.use(express.json());
 
-/* ROOT */
+/* ===== ROOT (OBRIGATÓRIO) ===== */
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-/* OPENAI COMPATÍVEL */
+/* ===== HEALTH CHECK ===== */
+app.get("/health", (req, res) => {
+  res.json({ status: "alive" });
+});
+
+/* ===== OPENAI-COMPATÍVEL ===== */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
-    const messages = req.body.messages || [];
-    const userMessage = messages.map(m => m.content).join("\n");
+    const messages = req.body?.messages;
+    if (!Array.isArray(messages)) {
+      return res.status(400).json({ error: "messages inválido" });
+    }
 
-    const response = await fetch(
+    const prompt = messages.map(m => m.content).join("\n");
+
+    const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: userMessage }] }]
+          contents: [
+            {
+              parts: [{ text: prompt }]
+            }
+          ]
         })
       }
     );
 
-    const data = await response.json();
+    const data = await geminiResponse.json();
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
@@ -49,13 +63,12 @@ app.post("/v1/chat/completions", async (req, res) => {
         }
       ]
     });
-  } catch {
-    return res.status(500).json({ error: "Erro no Gemini Proxy" });
+  } catch (err) {
+    return res.status(500).json({ error: "Erro interno" });
   }
 });
 
-/* SERVER */
-const port = process.env.PORT || 3001;
+/* ===== START ===== */
 app.listen(port, () => {
-  console.log("Gemini Proxy ativo");
+  console.log(`Server running on port ${port}`);
 });
