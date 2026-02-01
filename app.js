@@ -1,47 +1,54 @@
 const express = require("express");
-const fetch = require("node-fetch");
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
 /**
- * ROOT — usado só para health check
+ * Rota raiz (teste simples)
  */
 app.get("/", (req, res) => {
-  res.status(200).send("OK");
+  res.status(200).send("Gemini Proxy ONLINE");
 });
 
 /**
- * OpenAI-compatible endpoint
+ * Rota compatível com OpenAI Chat Completions
  */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
     const messages = req.body?.messages || [];
-    const userText = messages.map(m => m.content).join("\n");
 
-    const response = await fetch(
+    const prompt = messages.map(m => m.content).join("\n");
+
+    if (!prompt) {
+      return res.status(400).json({ error: "Mensagem vazia" });
+    }
+
+    const geminiResponse = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json"
+        },
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: userText }]
+              parts: [{ text: prompt }]
             }
           ]
         })
       }
     );
 
-    const data = await response.json();
+    const data = await geminiResponse.json();
+
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
 
-    res.json({
+    return res.json({
       id: "chatcmpl-gemini-proxy",
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
@@ -58,10 +65,10 @@ app.post("/v1/chat/completions", async (req, res) => {
       ]
     });
   } catch (err) {
-    res.status(500).json({ error: "Erro no proxy" });
+    return res.status(500).json({ error: err.message });
   }
 });
 
 app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+  console.log(`Gemini Proxy rodando na porta ${port}`);
 });
