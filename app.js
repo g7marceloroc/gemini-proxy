@@ -5,7 +5,12 @@ const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
-/* ================= CHAT COMPLETIONS ================= */
+/* ROOT */
+app.get("/", (req, res) => {
+  res.status(200).send("OK");
+});
+
+/* CHAT COMPLETIONS */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
     const messages = req.body.messages || [];
@@ -35,10 +40,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       choices: [
         {
           index: 0,
-          message: {
-            role: "assistant",
-            content: text
-          },
+          message: { role: "assistant", content: text },
           finish_reason: "stop"
         }
       ]
@@ -48,17 +50,6 @@ app.post("/v1/chat/completions", async (req, res) => {
   }
 });
 
-/* ================= ROOT ================= */
-app.get("/", (req, res) => {
-  res.status(200).send("OK");
-});
-
-/* ================= FALLBACK CORRETO ================= */
-app.use((req, res) => {
-  res.status(200).send("OK");
-});
-
-/* ================= START ================= */
 app.listen(port, () => {
   console.log("Server running on port", port);
 });
