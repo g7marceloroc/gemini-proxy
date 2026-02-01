@@ -3,27 +3,13 @@ const express = require("express");
 const app = express();
 const port = process.env.PORT || 3001;
 
-/* ===== MIDDLEWARE ===== */
+/* ========= MIDDLEWARE ========= */
 app.use(express.json());
 
-/* ===== ROOT ===== */
-app.get("/", (req, res) => {
-  res.status(200).send("OK");
-});
-
-/* ===== HEALTH ===== */
-app.get("/health", (req, res) => {
-  res.json({ status: "alive" });
-});
-
-/* ===== OPENAI COMPAT ===== */
+/* ========= CHAT COMPLETIONS ========= */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
-    const messages = req.body.messages;
-    if (!Array.isArray(messages)) {
-      return res.status(400).json({ error: "messages inválido" });
-    }
-
+    const messages = req.body.messages || [];
     const prompt = messages.map(m => m.content).join("\n");
 
     const response = await fetch(
@@ -42,7 +28,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
 
-    res.json({
+    return res.json({
       id: "chatcmpl-gemini-proxy",
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
@@ -50,17 +36,26 @@ app.post("/v1/chat/completions", async (req, res) => {
       choices: [
         {
           index: 0,
-          message: { role: "assistant", content: text },
+          message: {
+            role: "assistant",
+            content: text
+          },
           finish_reason: "stop"
         }
       ]
     });
-  } catch (err) {
-    res.status(500).json({ error: "Erro interno" });
+  } catch (e) {
+    return res.status(500).json({ error: "erro interno" });
   }
 });
 
-/* ===== START ===== */
+/* ========= FALLBACK ABSOLUTO ========= */
+/* QUALQUER ROTA RESPONDE */
+app.all("*", (req, res) => {
+  res.status(200).send("OK");
+});
+
+/* ========= START ========= */
 app.listen(port, () => {
   console.log("Server running on port", port);
 });
