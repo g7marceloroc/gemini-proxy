@@ -4,6 +4,28 @@ const port = process.env.PORT || 3001;
 
 app.get("/", (req, res) => res.type('html').send(html));
 
+app.use(express.json());
+
+app.post("/v1/chat/completions", (req, res) => {
+  res.json({
+    id: "chatcmpl-gemini-proxy",
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: "gpt-3.5-turbo",
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content: "Olá! Este é o Gemini Proxy respondendo 🚀"
+        },
+        finish_reason: "stop"
+      }
+    ]
+  });
+});
+
+
 const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 
 server.keepAliveTimeout = 120 * 1000;
