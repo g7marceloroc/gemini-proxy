@@ -1,49 +1,38 @@
 const express = require("express");
-const fetch = (...args) =>
-  import("node-fetch").then(({ default: fetch }) => fetch(...args));
-
 const app = express();
-const port = process.env.PORT || 3001;
 
 app.use(express.json());
 
-/* =========================
-   ROTA RAIZ (TESTE)
-========================= */
+/* ROOT */
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-/* =========================
-   CHAT COMPLETIONS (OPENAI COMPAT)
-========================= */
+/* OPENAI COMPATÍVEL */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
     const messages = req.body.messages || [];
     const userMessage = messages.map(m => m.content).join("\n");
 
-    const geminiResponse = await fetch(
+    const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
-            {
-              parts: [{ text: userMessage }]
-            }
+            { parts: [{ text: userMessage }] }
           ]
         })
       }
     );
 
-    const data = await geminiResponse.json();
-
+    const data = await response.json();
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
       "Sem resposta do Gemini";
 
-    return res.json({
+    res.json({
       id: "chatcmpl-gemini-proxy",
       object: "chat.completion",
       created: Math.floor(Date.now() / 1000),
@@ -59,18 +48,18 @@ app.post("/v1/chat/completions", async (req, res) => {
         }
       ]
     });
-  } catch (err) {
-    console.error(err);
-    return res.status(500).json({ error: "Erro no Gemini Proxy" });
+  } catch {
+    res.status(500).json({ error: "Erro no Gemini Proxy" });
   }
 });
 
-/* =========================
-   START SERVER
-========================= */
-const server = app.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+/* FALLBACK GLOBAL — ELIMINA 404 */
+app.all("*", (req, res) => {
+  res.status(200).send("OK");
 });
 
-server.keepAliveTimeout = 120 * 1000;
-server.headersTimeout = 120 * 1000;
+/* SERVER */
+const port = process.env.PORT || 3001;
+app.listen(port, () => {
+  console.log("Gemini Proxy ativo na porta", port);
+});
