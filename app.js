@@ -1,20 +1,25 @@
 const express = require("express");
+const fetch = require("node-fetch");
 
 const app = express();
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
 
 app.use(express.json());
 
-/* ROOT */
+/**
+ * ROOT — usado só para health check
+ */
 app.get("/", (req, res) => {
   res.status(200).send("OK");
 });
 
-/* CHAT COMPLETIONS */
+/**
+ * OpenAI-compatible endpoint
+ */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
-    const messages = req.body.messages || [];
-    const prompt = messages.map(m => m.content).join("\n");
+    const messages = req.body?.messages || [];
+    const userText = messages.map(m => m.content).join("\n");
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
@@ -22,7 +27,11 @@ app.post("/v1/chat/completions", async (req, res) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }]
+          contents: [
+            {
+              parts: [{ text: userText }]
+            }
+          ]
         })
       }
     );
@@ -40,16 +49,19 @@ app.post("/v1/chat/completions", async (req, res) => {
       choices: [
         {
           index: 0,
-          message: { role: "assistant", content: text },
+          message: {
+            role: "assistant",
+            content: text
+          },
           finish_reason: "stop"
         }
       ]
     });
-  } catch {
-    res.status(500).json({ error: "erro interno" });
+  } catch (err) {
+    res.status(500).json({ error: "Erro no proxy" });
   }
 });
 
 app.listen(port, () => {
-  console.log("Server running on port", port);
+  console.log(`Server running on port ${port}`);
 });
