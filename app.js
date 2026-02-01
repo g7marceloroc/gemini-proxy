@@ -23,9 +23,7 @@ app.post("/v1/chat/completions", async (req, res) => {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          contents: [
-            { parts: [{ text: userMessage }] }
-          ]
+          contents: [{ parts: [{ text: userMessage }] }]
         })
       }
     );
@@ -54,11 +52,6 @@ app.post("/v1/chat/completions", async (req, res) => {
   } catch {
     return res.status(500).json({ error: "Erro no Gemini Proxy" });
   }
-});
-
-/* FALLBACK */
-app.use((req, res) => {
-  res.status(200).send("OK");
 });
 
 /* SERVER */
