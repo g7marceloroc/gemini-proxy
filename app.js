@@ -4,6 +4,63 @@ const port = process.env.PORT || 3001;
 
 app.get("/", (req, res) => res.type('html').send(html));
 
+app.post("/v1/chat/completions", async (req, res) => {
+  try {
+    const userMessage =
+      req.body?.messages?.[req.body.messages.length - 1]?.content;
+
+    if (!userMessage) {
+      return res.status(400).json({ error: "Mensagem inválida" });
+    }
+
+    const fetch = (...args) =>
+      import("node-fetch").then(({ default: fetch }) => fetch(...args));
+
+    const geminiResponse = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [
+            {
+              role: "user",
+              parts: [{ text: userMessage }],
+            },
+          ],
+        }),
+      }
+    );
+
+    const data = await geminiResponse.json();
+
+    const text =
+      data.candidates?.[0]?.content?.parts?.[0]?.text ||
+      "Não consegui responder agora.";
+
+    return res.json({
+      id: "chatcmpl-gemini",
+      object: "chat.completion",
+      created: Math.floor(Date.now() / 1000),
+      model: process.env.GEMINI_MODEL,
+      choices: [
+        {
+          index: 0,
+          message: {
+            role: "assistant",
+            content: text,
+          },
+          finish_reason: "stop",
+        },
+      ],
+    });
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Erro no Gemini Proxy" });
+  }
+});
+
+
 app.use(express.json());
 
 app.post("/v1/chat/completions", (req, res) => {
