@@ -6,43 +6,41 @@ const port = process.env.PORT || 3001;
 app.use(express.json());
 
 /**
- * Rota raiz (teste simples)
+ * ROTA DE SAÚDE (RAIZ)
+ * Teste: curl https://SEU-URL.onrender.com/
  */
 app.get("/", (req, res) => {
   res.status(200).send("Gemini Proxy ONLINE");
 });
 
 /**
- * Rota compatível com OpenAI Chat Completions
+ * ROTA COMPATÍVEL COM OPENAI /v1/chat/completions
  */
 app.post("/v1/chat/completions", async (req, res) => {
   try {
-    const messages = req.body?.messages || [];
+    const messages = req.body.messages || [];
+    const userMessage = messages.map(m => m.content).join("\n");
 
-    const prompt = messages.map(m => m.content).join("\n");
-
-    if (!prompt) {
+    if (!userMessage) {
       return res.status(400).json({ error: "Mensagem vazia" });
     }
 
-    const geminiResponse = await fetch(
+    const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL}:generateContent?key=${process.env.GOOGLE_API_KEY}`,
       {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contents: [
             {
-              parts: [{ text: prompt }]
+              parts: [{ text: userMessage }]
             }
           ]
         })
       }
     );
 
-    const data = await geminiResponse.json();
+    const data = await response.json();
 
     const text =
       data?.candidates?.[0]?.content?.parts?.[0]?.text ||
@@ -65,7 +63,7 @@ app.post("/v1/chat/completions", async (req, res) => {
       ]
     });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: "Erro no Gemini Proxy" });
   }
 });
 
